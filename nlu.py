@@ -1,0 +1,93 @@
+from concept import Concept
+from store import Store
+from generator import InheritFromParentClass
+from typing import Mapping, Optional
+from parser import parse
+from graph import graph
+
+
+class NLU:
+
+    def __init__(self):
+        self.working_memory = Store()
+        self.question_store = Store(self.working_memory)
+        self.concepts = []  # type: list[Concept]
+
+    def integrate(self, expression: str, label: str=None, probability: float=1.0) -> Concept:
+        parsed = parse(expression, self.working_memory, label, probability)
+        return self.working_memory.integrate(parsed)
+
+    def ask(self, question: str) -> (Concept, Optional[Mapping[Concept, Concept]], Optional[Concept]):
+        self.question_store = Store(self.working_memory)
+
+        q = parse(question, self.question_store)  # type: Concept
+
+        for concept in self.working_memory.concepts():  # type: Concept
+            match = concept.matches(q)
+            if match is not None:
+                return q, match, concept
+
+        # todo: handle available generators in a more generic way
+        generator = InheritFromParentClass()
+        for concept in generator.gen(self.question_store):  # type: Concept
+            match = concept.matches(q)
+            if match is not None:
+                return q, match, concept
+
+        return q, None, None
+
+    @staticmethod
+    def create_answer(question: Concept, mapping: Mapping[Concept, Concept]) -> Concept:
+        if mapping is None:
+            return None
+
+        # simple
+        if question.is_simple():
+            if question in mapping:
+                return mapping[question]
+            return question
+
+        # compound
+        ap = []  # type: list[Concept]
+        for p in question.parents:
+            ap.append(NLU.create_answer(p, mapping))
+
+        return Concept(question.name, question.relation, ap)
+
+    def ask_question(self, question: str):
+
+        parsed, match, matched_concept = self.ask(question)
+        answer = self.create_answer(parsed, match)
+        print("Question: %s" % parsed)
+
+        direct = str(answer)
+        p = ''
+        if matched_concept is not None:
+            p = '(p=%r)' % matched_concept.probability
+        print("Answer: %s %s" % (direct, p))
+
+        if matched_concept is not None:
+            full = str(matched_concept)
+            if direct != full:
+                print("Full answer: %s" % full)
+
+if __name__ == '__main__':
+    nlu = NLU()
+    nlu.integrate("C(Budapest, city)")
+
+    nlu.integrate("C(New York, city)")
+    nlu.integrate("C(Tokyo, city)")
+    nlu.integrate("C(city, location)")
+
+    nlu.integrate("F(A(she,arrive),T(yesterday),R(from,Budapest),R(to,Vienna))", "She arrived y from Bp to V")
+    nlu.integrate("F(A(she,stay),R(at,Hilton),R(on,Ring))", "She stayed at the Hilton")
+
+    print(graph(nlu.working_memory, words=True))
+
+    nlu.ask_question("?")
+    nlu.ask_question("F(A(she,arrive), T(?))")
+    nlu.ask_question("A(she,?)")
+    nlu.ask_question("F(A(?,stay),R(at, Hilton))")
+    nlu.ask_question("F(A(she,?),T(yesterday))")
+
+    nlu.ask_question("F(?,T(?))")
