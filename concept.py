@@ -25,8 +25,8 @@ class Concept:
             self._key = relation.id + '(' + ','.join(map(Concept.key, parents)) + ')'
 
         self.children = set()  # type: Set[Concept]
-        for p in parents:
-            p.add_child(self)
+        self.store = None  # type: Store
+
 
     def __repr__(self):
         return "Concept(name=%r,relation=%r,parents=%r,p=%r)" % \
@@ -51,7 +51,7 @@ class Concept:
     def merge_probability(self, value:float) -> None:
         self.set_probability(merge_probability(self.probability, value))
 
-    def propagate_probability_from_parent(self, parent:'Concept') -> None:
+    def propagate_probability_from_parent(self, parent: 'Concept') -> None:
         if self.relation == Relation.Implication:
             if len(self.parents) == 2 and parent == self.parents[0]:
                 self.parents[1].merge_probability(parent.probability)
@@ -61,6 +61,10 @@ class Concept:
 
     def add_child(self, child: 'Concept') -> None:
         self.children.add(child)
+
+    def register_with_parents(self) -> None:
+        for p in self.parents:
+            p.add_child(self)
 
     @staticmethod
     def word(label: str) -> 'Concept':

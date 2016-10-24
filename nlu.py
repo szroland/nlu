@@ -5,12 +5,14 @@ from typing import Mapping, Optional
 from parser import parse
 from graph import graph
 
+import logging
+logger = logging.getLogger(__name__)
 
 class NLU:
 
     def __init__(self):
-        self.working_memory = Store()
-        self.question_store = Store(self.working_memory)
+        self.working_memory = Store(label='WM')
+        self.question_store = Store(self.working_memory, label='Question')
         self.concepts = []  # type: list[Concept]
 
     def integrate(self, expression: str, label: str=None, probability: float=1.0) -> Concept:
@@ -18,7 +20,7 @@ class NLU:
         return self.working_memory.integrate(parsed)
 
     def ask(self, question: str) -> (Concept, Optional[Mapping[Concept, Concept]], Optional[Concept]):
-        self.question_store = Store(self.working_memory)
+        self.question_store = Store(self.working_memory, label='Question')
 
         q = parse(question, self.question_store)  # type: Concept
 
@@ -30,6 +32,15 @@ class NLU:
         # todo: handle available generators in a more generic way
         generator = InheritFromParentClass()
         for concept in generator.gen(self.question_store):  # type: Concept
+            match = concept.matches(q)
+            if match is not None and abs(concept.probability-0.5) > 0.0:
+                return q, match, concept
+
+        # another pass at all generated concepts to see if result was generated as part of larger compound concept
+        # or, probability of result changed during generating concepts
+        # todo: replace this with the ability to mark processed items in the store to be more efficient
+
+        for concept in self.question_store.own_concepts():  # type: Concept
             match = concept.matches(q)
             if match is not None:
                 return q, match, concept

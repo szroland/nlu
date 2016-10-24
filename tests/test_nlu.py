@@ -59,6 +59,30 @@ class NLUTestCase(unittest.TestCase):
         self.assertIsNotNone(c)
         self.assertEqual(c.probability, 1.0)
 
+    def test_implication_works_after_parent_statement(self):
+        nlu = NLU()
+        nlu.integrate("F(Joe,tired)")
+        nlu.integrate("IM(F(Joe,tired),F(Joe,slow))")
+        nlu.integrate("IM(F(Joe,slow),F(Joe,angry))")
+
+        q, a, c = nlu.ask("F(Joe,angry)")
+        self.assertIsNotNone(c)
+        self.assertEqual(c.probability, 1.0)
+
+    def test_implication_with_class(self):
+        nlu = NLU()
+        nlu.integrate("IM(F(person,tired),F(person,slow))")
+        nlu.integrate("IM(F(person,slow),F(person,angry))")
+        nlu.integrate("C(Joe,person)")
+        nlu.integrate("F(Joe,tired)")
+
+        logger.info("State:\n%s\n" % graph(nlu.working_memory))
+        q, a, c = nlu.ask("F(Joe,angry)")
+
+        logger.info("State:\n%s\n" % graph(nlu.question_store))
+        self.assertIsNotNone(c)
+        self.assertEqual(c.probability, 1.0)
+
 
 if __name__ == '__main__':
     unittest.main()

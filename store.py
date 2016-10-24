@@ -6,10 +6,11 @@ from typing import Any, Iterable
 
 class Store:
 
-    def __init__(self, parent: 'Store'=None):
+    def __init__(self, parent: 'Store'=None, label: str=None):
         self._words = {}  # type: dict[str, Word]
         self._concepts = {}  # type: dict[str, Concept]
         self._parent = parent
+        self.label = label
 
     def get_word(self, word:str) -> Word:
         if self._parent is not None:
@@ -63,6 +64,10 @@ class Store:
         for l, c in self._concepts.items():
             yield c
 
+    def own_concepts(self) -> Iterable[Concept]:
+        for l, c in self._concepts.items():
+            yield c
+
     def integrate(self, concept: Concept) -> Concept:
         integrated = self.get_concept(concept)
         if integrated is None:
@@ -71,6 +76,8 @@ class Store:
                 ip.append(self.integrate(p))
 
             integrated = Concept(concept.name, concept.relation, ip, concept.probability)
+            integrated.store = self
+            integrated.register_with_parents()
             self.add_concept(integrated)
 
             if integrated.relation == Relation.Word:
@@ -79,6 +86,8 @@ class Store:
                     w = Word(word)
                     w.add_meaning(integrated)
                     self._words[word] = w
+            elif integrated.relation == Relation.Implication:
+                integrated.propagate_probability_from_parent(integrated.parents[0])
 
         else:
             integrated.merge_probability(concept.probability)

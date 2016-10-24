@@ -2,18 +2,47 @@ from store import Store
 from relation import Relation
 from concept import Concept
 
-from typing import Iterable
+from typing import Iterable, Set, Mapping
+from queue import Queue
+
+import logging
+logger = logging.getLogger(__name__)
 
 
-def clone_concept_with_replacing_parent(concept: Concept, old_parent: Concept, new_parent: Concept) -> Concept:
+def clone_concept_with_replacing_parent(concept: Concept, mapping: Mapping[Concept, Concept],
+                                        old_parent: Concept, new_parent: Concept) -> (Concept, bool):
+    if concept in mapping:
+        return mapping[concept], True
+
     np = []  # type: list(Concept)
+    replaced = False
     for p in concept.parents:
         if p == old_parent:
             np.append(new_parent)
+            replaced = True
         else:
-            np.append(p)
+            clone, flag = clone_concept_with_replacing_parent(p, mapping, old_parent, new_parent);
+            np.append(clone)
+            if flag:
+                replaced = True
 
-    return Concept(concept.name, concept.relation, np, concept.probability)
+    result = Concept(concept.name, concept.relation, np, concept.probability)
+    if replaced:
+        mapping[concept] = result
+    return result, replaced
+
+
+def collect_children(concept: Concept, ignore: Concept) -> Set[Concept]:
+    result = set()
+    pending = Queue()
+    pending.put(concept)
+    while not pending.empty():
+        c = pending.get()  # type: Concept
+        result.add(c)
+        for child in c.children:
+            if child != ignore:
+                pending.put(child)
+    return result
 
 
 class InheritFromParentClass:
@@ -28,15 +57,17 @@ class InheritFromParentClass:
             classes = list(filter(lambda c: c.relation == Relation.Class, store.concepts()))
 
             for class_concept in classes:  # type: Concept
-                source, target = class_concept.parents
-                target_children = list(target.children)
+                source = class_concept.parents[0]
+                target = class_concept.parents[1]
+                target_children = collect_children(target, class_concept)
 
+                mapping = {}
                 for tc in target_children:  # type: Concept
-                    if tc == class_concept:
-                        continue
+                    clone_concept_with_replacing_parent(tc, mapping, target, source)
 
-                    inherited = clone_concept_with_replacing_parent(tc, target, source)
-
-                    if store.get_concept(inherited) is None:
+                for template, clone in mapping.items():
+                    if store.get_concept(clone) is None:
                         keep_searching = True
-                        yield store.integrate(inherited)
+                        logger.debug("Generated concept %s" % clone)
+                        yield store.integrate(clone)
+

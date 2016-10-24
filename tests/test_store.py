@@ -54,5 +54,16 @@ class StoreTestCase(unittest.TestCase):
 
         self.assertIsNotNone(store.get_concept(parse("A")))
 
+    def test_parse_interference_with_child_links(self):
+        store = Store()
+        # F links to person and slow
+        store.integrate(parse("F(person,slow)"))
+
+        # this should not link itself to the integrated "slow" concept
+        parse("F(person,slow)", store)
+
+        integrated = store.get_concept(parse("slow"))
+        self.assertEqual(len(integrated.children), 1)
+
 if __name__ == '__main__':
     unittest.main()

@@ -9,7 +9,7 @@ def node(node_id: Any, name: str, w: int, color: str, shape: str) -> str:
         + "', name:'"+name \
         + "', weight:"+str(w) \
         + ", faveColor:'"+color \
-        + ", faveShape:'"+shape+"' } },"
+        + "', faveShape:'"+shape+"' } },"
     return s
 
 
@@ -37,7 +37,7 @@ def is_simple_2arg_concept(concept: Concept) -> bool:
     return True
 
 
-def graph(store:Store, words: bool=False, simplify: bool=True):
+def graph(store: Store, words: bool=False, simplify: bool=True):
     s = "{ nodes: ["
     if words:
         for word in store.words():
