@@ -101,16 +101,16 @@ class Concept:
 
         return None
 
-    def matches(self, concept:'Concept') -> Mapping['Concept', 'Concept']:
-        if concept.is_simple() and concept.is_question():
-            return {concept: self}
+    def matches(self, pattern: 'Concept') -> Mapping['Concept', 'Concept']:
+        if pattern.is_simple() and pattern.is_question():
+            return {pattern: self}
 
-        if concept.relation != self.relation:
+        if pattern.relation != self.relation:
             return None
 
         # simple concept
-        if concept.is_simple():
-            if self == concept:
+        if pattern.is_simple():
+            if self == pattern:
                 return {}
             else:
                 return None
@@ -120,11 +120,20 @@ class Concept:
 
         # compound concept
         mapping = {}  # type: dict[Concept, Concept]
-        remaining = list(self.parents)
+
+        # first arg is special and fixed
+        # todo: is this based on relation type?
+        match = self.parents[0].matches(pattern.parents[0])
+        if match is None:
+            return None
+        mapping.update(match)
+
+        # now match the rest of args unordered
+        remaining = list(self.parents[1:])
         questions = []  # type: List[Concept]
 
         # match fixed parents first
-        for p in concept.parents:
+        for p in pattern.parents[1:]:
             if p.is_question():
                 questions.append(p)
             else:

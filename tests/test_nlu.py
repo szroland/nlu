@@ -74,12 +74,17 @@ class NLUTestCase(unittest.TestCase):
         nlu.integrate("IM(F(person,tired),F(person,slow))")
         nlu.integrate("IM(F(person,slow),F(person,angry))")
         nlu.integrate("C(Joe,person)")
+
+        q, a, c = nlu.ask("F(Joe,angry)")
+        logger.info("Answer to question %s: %s p=%r" % (q, nlu.create_answer(q, a), c.probability))
+
         nlu.integrate("F(Joe,tired)")
 
         logger.info("State:\n%s\n" % graph(nlu.working_memory))
         q, a, c = nlu.ask("F(Joe,angry)")
 
         logger.info("State:\n%s\n" % graph(nlu.question_store))
+        logger.info("Answer to question %s: %s p=%r" % (q, nlu.create_answer(q, a), c.probability))
         self.assertIsNotNone(c)
         self.assertEqual(c.probability, 1.0)
 

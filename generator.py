@@ -32,16 +32,21 @@ def clone_concept_with_replacing_parent(concept: Concept, mapping: Mapping[Conce
     return result, replaced
 
 
-def collect_children(concept: Concept, ignore: Concept) -> Set[Concept]:
+def collect_children(concept: Concept) -> Set[Concept]:
     result = set()
     pending = Queue()
     pending.put(concept)
     while not pending.empty():
         c = pending.get()  # type: Concept
         result.add(c)
-        for child in c.children:
-            if child != ignore:
-                pending.put(child)
+        for child in c.children:  # type: Concept
+            # for C, only include the relationship if this is the source
+            # todo: this may apply to other relationship types as well
+
+            if child.relation == Relation.Class and child.parents[0] != c:
+                continue
+
+            pending.put(child)
     return result
 
 
@@ -59,7 +64,8 @@ class InheritFromParentClass:
             for class_concept in classes:  # type: Concept
                 source = class_concept.parents[0]
                 target = class_concept.parents[1]
-                target_children = collect_children(target, class_concept)
+                logger.debug("Using class concept %s" % class_concept)
+                target_children = collect_children(target)
 
                 mapping = {}
                 for tc in target_children:  # type: Concept
