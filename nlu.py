@@ -16,11 +16,13 @@ class NLU:
         self.concepts = []  # type: list[Concept]
 
     def integrate(self, expression: str, label: str=None, probability: float=1.0) -> Concept:
+        # for now, only reset question_store when new statements are integrated into the working memory
+        self.question_store = Store(self.working_memory, label='Question')
+
         parsed = parse(expression, self.working_memory, label, probability)
         return self.working_memory.integrate(parsed)
 
     def ask(self, question: str) -> (Concept, Optional[Mapping[Concept, Concept]], Optional[Concept]):
-        self.question_store = Store(self.working_memory, label='Question')
 
         q = parse(question, self.question_store)  # type: Concept
 
