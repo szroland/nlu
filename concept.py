@@ -112,6 +112,8 @@ class Concept:
         if pattern.is_simple():
             if self == pattern:
                 return {}
+            elif self.is_simple() and self.name == pattern.name:
+                return {}
             else:
                 return None
 

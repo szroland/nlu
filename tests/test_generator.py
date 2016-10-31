@@ -32,7 +32,7 @@ class InheritFromParentClassTestCase(unittest.TestCase):
         nlu.integrate("C(kid, person)")
 
         nlu.integrate("C(person, entity)")
-        nlu.integrate("C(firm, entity")
+        nlu.integrate("C(firm, entity)")
 
         logger.info("State: \n%s\n" % graph(nlu.working_memory))
 

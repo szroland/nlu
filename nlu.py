@@ -1,9 +1,10 @@
 from concept import Concept
 from store import Store
 from generator import InheritFromParentClass
-from typing import Mapping, Optional
+from typing import Mapping, Optional, List
 from parser import parse
 from graph import graph
+from text_parser import SpacyTranslator
 
 import logging
 logger = logging.getLogger(__name__)
@@ -14,17 +15,38 @@ class NLU:
         self.working_memory = Store(label='WM')
         self.question_store = Store(self.working_memory, label='Question')
         self.concepts = []  # type: list[Concept]
+        self.text_parser = SpacyTranslator()
 
-    def integrate(self, expression: str, label: str=None, probability: float=1.0) -> Concept:
+    def is_mentalase(self, expression: str):
+        if '(' in expression and ')' in expression:
+            return True
+        if ' ' in expression:
+            return False
+
+        #single word
+        return True
+
+    def integrate(self, expression: str, label: str=None, probability: float=1.0) -> List[Concept]:
         # for now, only reset question_store when new statements are integrated into the working memory
         self.question_store = Store(self.working_memory, label='Question')
 
-        parsed = parse(expression, self.working_memory, label, probability)
-        return self.working_memory.integrate(parsed)
+        parsed = []
+        if self.is_mentalase(expression):
+            concept = parse(expression, self.working_memory, label, probability)
+            parsed.append(concept)
+            self.working_memory.integrate(concept)
+        else:
+            for concept in self.text_parser.parse(expression):
+                parsed.append(concept)
+                self.working_memory.integrate(concept)
+        return parsed
 
     def ask(self, question: str) -> (Concept, Optional[Mapping[Concept, Concept]], Optional[Concept]):
 
-        q = parse(question, self.question_store)  # type: Concept
+        if self.is_mentalase(question):
+            q = parse(question, self.question_store)  # type: Concept
+        else:
+            q = next(self.text_parser.parse(question))
 
         for concept in self.working_memory.concepts():  # type: Concept
             match = concept.matches(q)
