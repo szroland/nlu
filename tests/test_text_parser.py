@@ -129,5 +129,16 @@ class SpacyTranslatorTest(unittest.TestCase):
             ]
         )
 
+    def test_possession(self):
+        self.expect_translation(
+            "Bob is Mary's brother. You are my friend. Who is Mary's cousin? Whose brother is Tom?",
+            [
+                "D(Bob, P(Mary, brother))",
+                "D(you, P(my, friend))",
+                "D(?, P(Mary, cousin))",
+                "D(Tom, P(?, brother))"
+            ]
+        )
+
 if __name__ == '__main__':
     unittest.main()

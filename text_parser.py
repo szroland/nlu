@@ -55,10 +55,17 @@ class SpacyTranslator(TextToMentalase):
             if c.dep_ == type:
                 yield c
 
-    def subj(self, sentence) -> Iterable:
+    def subj(self, sentence) -> Iterable[Concept]:
         s = self.dep(sentence, 'nsubj')
         while s is not None:
-            yield s
+            p = self.dep(s, 'poss')
+            if p is None:
+                yield Concept.word(self.name(s))
+            else:
+                yield Concept(None, Relation.Part, [
+                    Concept.word(self.name(p)),
+                    Concept.word(self.name(s))
+                ])
 
             s = self.dep(s, 'conj')
 
@@ -66,7 +73,7 @@ class SpacyTranslator(TextToMentalase):
     def name(noun):
         if noun.pos_ == 'PROPN':  # keep case for proper nouns
             return noun.orth_
-        if noun.tag_ == 'WP':  # replace WH-pronouns with ?
+        if noun.tag_ == 'WP' or noun.tag_ == 'WP$':  # replace WH-pronouns with ?
             return '?'
         if noun.tag_ == 'WRB':
             return '?'
@@ -75,22 +82,36 @@ class SpacyTranslator(TextToMentalase):
     def parse_simple(self, root) -> Iterable:
         if root.lemma_ == 'be':
             attr = self.dep(root, 'attr')
-            if attr and attr.pos_ == 'NOUN':
+            if attr and (attr.pos_ == 'NOUN' or attr.pos_ == 'PROPN'):
                 rel = Relation.Class
                 prep = self.dep(root, 'prep')
                 if prep is not None and prep.lemma_ == 'like':
                     rel = Relation.Feature
-                for subj in self.subj(root):
-                    yield Concept(None, rel, [
-                        Concept(self.name(subj), Relation.Word, []),
-                        Concept(self.name(attr), Relation.Word, [])
+                attr_concept = Concept.word(self.name(attr))
+                poss = self.dep(attr, "poss")
+                if poss is not None:
+                    attr_concept = Concept(None, Relation.Part, [
+                        Concept.word(self.name(poss)),
+                        attr_concept
                     ])
+                    rel = Relation.Identical
+                for subj in self.subj(root):  # type: Concept
+                    if subj.relation == Relation.Part:
+                        yield Concept(None, Relation.Identical, [
+                            attr_concept,
+                            subj
+                        ])
+                    else:
+                        yield Concept(None, rel, [
+                            subj,
+                            attr_concept
+                        ])
             acomp = self.dep(root, 'acomp')
             if acomp and acomp.pos_ == 'ADJ':
                 for subj in self.subj(root):
                     yield Concept(None, Relation.Feature, [
-                        Concept(self.name(subj), Relation.Word, []),
-                        Concept(self.name(acomp), Relation.Word, [])
+                        subj,
+                        Concept.word(self.name(acomp))
                     ])
         elif root.pos_ == 'VERB':
             for subj in self.subj(root):
@@ -107,7 +128,7 @@ class SpacyTranslator(TextToMentalase):
                     rel = Relation.Action
 
                 concept = Concept(None, rel, [
-                    Concept.word(self.name(subj)),
+                    subj,
                     Concept.word(self.name(root))
                 ])
 
