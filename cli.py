@@ -18,20 +18,20 @@ if __name__ == '__main__':
             print("Input Mentalase statements or questions one line per expression, or")
             print("input free text statements or questions (multiple statements per line, questions separately), or")
             print("one of these commands:")
-            print("  working_memory : graph description of working memory state")
-            print("  question_store : graph description of last question store")
-            print("  reset          : reset session")
-            print("  log [level]    : set log level")
-            print("  help           : this help")
-            print("  exit           : exit")
+            print("  working_memory (wm) : graph description of working memory state")
+            print("  question_store (qs) : graph description of last question store")
+            print("  reset               : reset session")
+            print("  log [level]         : set log level")
+            print("  help                : this help")
+            print("  exit                : exit")
         elif command == 'exit':
             break
         elif command == 'reset':
             nlu = NLU()
             print("Session reset")
-        elif command == 'working_memory':
+        elif command == 'working_memory' or command == 'wm':
             print("\n%s\n" % graph(nlu.working_memory))
-        elif command == 'question_store':
+        elif command == 'question_store' or command == 'qs':
             print("\n%s\n" % graph(nlu.question_store))
         elif command.startswith("log "):
             level = command[4:].upper()
