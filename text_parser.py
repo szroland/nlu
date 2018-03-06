@@ -31,7 +31,7 @@ def get_spacy_parser(language='en'):
 class SpacyTranslator(TextToMentalase):
 
     def __init__(self, language='en', nlp=None):
-        self.language = language;
+        self.language = language
         self.__nlp = nlp
 
     @property
@@ -79,7 +79,7 @@ class SpacyTranslator(TextToMentalase):
             return '?'
         return noun.lemma_
 
-    def parse_simple(self, root) -> Iterable:
+    def parse_simple(self, root, probability: float=1.0) -> Iterable:
         if root.lemma_ == 'be':
             attr = self.dep(root, 'attr')
             if attr and (attr.pos_ == 'NOUN' or attr.pos_ == 'PROPN'):
@@ -105,14 +105,14 @@ class SpacyTranslator(TextToMentalase):
                         yield Concept(None, rel, [
                             subj,
                             attr_concept
-                        ])
+                        ], probability)
             acomp = self.dep(root, 'acomp')
             if acomp and acomp.pos_ == 'ADJ':
                 for subj in self.subj(root):
                     yield Concept(None, Relation.Feature, [
                         subj,
                         Concept.word(self.name(acomp))
-                    ])
+                    ], probability)
         elif root.pos_ == 'VERB':
             for subj in self.subj(root):
                 rel = Relation.Feature
@@ -130,7 +130,7 @@ class SpacyTranslator(TextToMentalase):
                 concept = Concept(None, rel, [
                     subj,
                     Concept.word(self.name(root))
-                ])
+                ], probability)
 
                 features = []
                 npadvmod = self.dep(root, 'npadvmod')
@@ -162,19 +162,19 @@ class SpacyTranslator(TextToMentalase):
                 if len(features) > 0:
                     concept = Concept(None, Relation.Feature, [
                         concept
-                    ] + features)
+                    ] + features, probability)
 
                 yield concept
 
-    def parse_sentence(self, root) -> Iterable:
+    def parse_sentence(self, root, probability: float) -> Iterable:
         advcl = self.dep(root, 'advcl')
         mark = self.dep(advcl, 'mark')
         if advcl and mark and mark.lemma_ == 'if':
-            condition = next(self.parse_simple(advcl))
-            for action in self.parse_simple(root):
+            condition = next(self.parse_simple(advcl, probability / 2.0))
+            for action in self.parse_simple(root, probability / 2.0):
                 yield Concept(None, Relation.Implication, [
                     condition, action
-                ])
+                ], probability)
 
         else:
             for c in self.parse_simple(root):
@@ -185,12 +185,12 @@ class SpacyTranslator(TextToMentalase):
         for child in token.children:
             self.dump_sentence(child, indent + "  ")
 
-    def parse(self, text: str):
+    def parse(self, text: str, probability: float=1.0):
         doc = self.nlp(text)
         for sentence in doc.sents:
             logger.debug('Parsing: %r ROOT: %s (%s)' % (sentence, sentence.root, sentence.root.lemma_))
             self.dump_sentence(sentence.root)
-            for concept in self.parse_sentence(sentence.root):
+            for concept in self.parse_sentence(sentence.root, probability):
                 yield concept
 
     def explore(self, text):
